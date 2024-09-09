@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Video Call</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #localVideo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 150px;
+            height: 120px;
+            border: 2px solid #fff;
+        }
+
+        #remoteVideo {
+            width: 80%;
+            height: 80%;
+            border: 2px solid #fff;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #statusMessage {
+            margin-top: 20px;
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebRTC Video Call</h1>
+
+    <!-- User ID for registration -->
+    <label for="userId">Your User ID:</label>
+    <input type="text" id="userId">
+    <button id="registerButton">Register</button>
+
+    <!-- Specify target user ID to call -->
+    <label for="targetUserId">Call User ID:</label>
+    <input type="text" id="targetUserId">
+    <button id="callButton">Call</button>
+
+    <video id="localVideo" autoplay playsinline muted></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+
+    <div class="controls">
+        <button id="acceptCall" class="hidden">Accept</button>
+        <button id="rejectCall" class="hidden">Reject</button>
+        <button id="muteButton" class="hidden">Mute</button>
+        <button id="endCall" class="hidden">End Call</button>
+    </div>
+
+    <div id="statusMessage"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
