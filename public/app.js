@@ -4,7 +4,7 @@ const callButton = document.getElementById('callButton');
 const acceptCallButton = document.getElementById('acceptCall');
 const rejectCallButton = document.getElementById('rejectCall');
 const muteButton = document.getElementById('muteButton');
-const endCallButton = document.getElementById('endCall');
+const endCallButton = document.getElementById('endCallButton');
 const statusMessage = document.getElementById('statusMessage');
 
 const signalingServer = new WebSocket('ws://localhost:3000');
@@ -13,13 +13,12 @@ let localPeerConnection;
 let remotePeerConnection;
 let localStream;
 let remoteStream = null;
-let isCaller = false;
 let isMuted = false;
 
 let userId = null;
 let targetUserId = null;
 
-// Register the user ID
+// User Registration
 document.getElementById('registerButton').onclick = () => {
     userId = document.getElementById('userId').value;
     if (!userId) {
@@ -28,14 +27,17 @@ document.getElementById('registerButton').onclick = () => {
     }
 
     signalingServer.send(JSON.stringify({ type: 'register', userId }));
+    console.log(`User ${userId} registered`);
     statusMessage.innerHTML = `Registered as ${userId}`;
+    callButton.classList.remove('hidden'); // Enable the Call button after registration
 };
 
-// Get local video stream
+// Get Local Video Stream
 async function getLocalStream() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localVideo.srcObject = localStream;
+        console.log('Local stream obtained');
         return true;
     } catch (error) {
         console.error('Error getting local stream:', error);
@@ -43,7 +45,7 @@ async function getLocalStream() {
     }
 }
 
-// Caller initiates the call
+// Initiate Call
 callButton.onclick = async () => {
     targetUserId = document.getElementById('targetUserId').value;
     if (!targetUserId) {
@@ -51,96 +53,74 @@ callButton.onclick = async () => {
         return;
     }
 
-    isCaller = true;
     if (await getLocalStream()) {
-        // Start call signaling to the target user
+        console.log(`Initiating call to user ${targetUserId}`);
+
+        setupCallerConnection(); // Set up the caller's connection
+
         signalingServer.send(JSON.stringify({
             type: 'call-initiate',
             fromUserId: userId,
             targetUserId: targetUserId
         }));
-        statusMessage.innerHTML = `Calling user ${targetUserId}...`;
+
+        statusMessage.innerHTML = `Calling ${targetUserId}...`;
     }
 };
 
-// Receiver accepts the call
+// Accept Call
 acceptCallButton.onclick = async () => {
     if (await getLocalStream()) {
         statusMessage.innerHTML = 'Call accepted. Connecting...';
+        console.log('Call accepted');
 
-        // Notify the caller
+        setupReceiverConnection(); // Set up the receiver's connection
+
         signalingServer.send(JSON.stringify({
             type: 'call-accept',
             fromUserId: userId,
             targetUserId: targetUserId
         }));
-
-        // Create a new RTCPeerConnection and set up the remote stream
-        remotePeerConnection = new RTCPeerConnection();
-        remoteStream = new MediaStream();
-        remoteVideo.srcObject = remoteStream;
-
-        remotePeerConnection.ontrack = (event) => {
-            remoteStream.addTrack(event.track);
-        };
-
-        remotePeerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                signalingServer.send(JSON.stringify({
-                    type: 'candidate',
-                    fromUserId: userId,
-                    targetUserId: targetUserId,
-                    candidate: event.candidate
-                }));
-            }
-        };
-
-        const answer = await remotePeerConnection.createAnswer();
-        await remotePeerConnection.setLocalDescription(answer);
-        signalingServer.send(JSON.stringify({
-            type: 'answer',
-            fromUserId: userId,
-            targetUserId: targetUserId,
-            answer: answer
-        }));
     }
 };
 
-// Receiver rejects the call
+// Reject Call
 rejectCallButton.onclick = () => {
     signalingServer.send(JSON.stringify({
         type: 'call-reject',
         fromUserId: userId,
         targetUserId: targetUserId
     }));
+    console.log('Call rejected');
     statusMessage.innerHTML = 'Call rejected';
+    resetUI();
 };
 
-// Mute/unmute functionality
+// Mute/Unmute Local Audio
 muteButton.onclick = () => {
-    localStream.getAudioTracks()[0].enabled = isMuted;
     isMuted = !isMuted;
+    localStream.getAudioTracks()[0].enabled = !isMuted;
     muteButton.textContent = isMuted ? 'Unmute' : 'Mute';
+    console.log(isMuted ? 'Audio muted' : 'Audio unmuted');
 };
 
-// End call functionality
+// End Call - Stops both local and remote streams
 endCallButton.onclick = () => {
     signalingServer.send(JSON.stringify({
         type: 'call-end',
         fromUserId: userId,
         targetUserId: targetUserId
     }));
-    localPeerConnection?.close();
-    remotePeerConnection?.close();
-    statusMessage.innerHTML = 'Call ended';
+    console.log('Call ended');
+    cleanupCall();
 };
 
-// Handle incoming WebSocket messages
+// Handle Incoming WebSocket Messages
 signalingServer.onmessage = async (message) => {
     const data = JSON.parse(message.data);
 
     if (data.type === 'call-initiate') {
-        // Show accept/reject buttons for the receiver
+        console.log(`Incoming call from ${data.fromUserId}`);
         statusMessage.innerHTML = `Incoming call from ${data.fromUserId}`;
         targetUserId = data.fromUserId;
         acceptCallButton.classList.remove('hidden');
@@ -148,31 +128,9 @@ signalingServer.onmessage = async (message) => {
     }
 
     if (data.type === 'call-accept') {
-        // The receiver accepted the call
         statusMessage.innerHTML = 'Connecting...';
-
-        // Create a new RTCPeerConnection
-        localPeerConnection = new RTCPeerConnection();
-        localStream.getTracks().forEach(track => localPeerConnection.addTrack(track, localStream));
-
-        localPeerConnection.ontrack = (event) => {
-            if (!remoteStream) {
-                remoteStream = new MediaStream();
-                remoteVideo.srcObject = remoteStream;
-            }
-            remoteStream.addTrack(event.track);
-        };
-
-        localPeerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                signalingServer.send(JSON.stringify({
-                    type: 'candidate',
-                    fromUserId: userId,
-                    targetUserId: targetUserId,
-                    candidate: event.candidate
-                }));
-            }
-        };
+        console.log('Call accepted by the target user');
+        setupCallerConnection(); // Set up the caller's connection
 
         const offer = await localPeerConnection.createOffer();
         await localPeerConnection.setLocalDescription(offer);
@@ -182,15 +140,37 @@ signalingServer.onmessage = async (message) => {
             targetUserId: targetUserId,
             offer: offer
         }));
+
+        // Remove Accept/Reject buttons and show Call controls
+        acceptCallButton.classList.add('hidden');
+        rejectCallButton.classList.add('hidden');
+        showCallControls();
     }
 
     if (data.type === 'offer') {
+        console.log('Offer received');
         await remotePeerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+
+        const answer = await remotePeerConnection.createAnswer();
+        await remotePeerConnection.setLocalDescription(answer);
+        signalingServer.send(JSON.stringify({
+            type: 'answer',
+            fromUserId: userId,
+            targetUserId: targetUserId,
+            answer: answer
+        }));
+
+        // Remove Accept/Reject buttons and show Call controls
+        acceptCallButton.classList.add('hidden');
+        rejectCallButton.classList.add('hidden');
+        showCallControls();
     }
 
     if (data.type === 'answer') {
+        console.log('Answer received');
         await localPeerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
         statusMessage.innerHTML = 'Call connected';
+        showCallControls(); // Show relevant call controls (mute, end)
     }
 
     if (data.type === 'candidate') {
@@ -203,10 +183,100 @@ signalingServer.onmessage = async (message) => {
     }
 
     if (data.type === 'call-reject') {
+        console.log('Call rejected by the receiver');
         statusMessage.innerHTML = 'Call rejected';
+        resetUI();
     }
 
     if (data.type === 'call-end') {
+        console.log('Call ended by opponent');
         statusMessage.innerHTML = 'Call ended by opponent';
+        cleanupCall();
     }
 };
+
+// Setup Caller Connection
+function setupCallerConnection() {
+    localPeerConnection = new RTCPeerConnection();
+
+    localStream.getTracks().forEach(track => localPeerConnection.addTrack(track, localStream));
+
+    localPeerConnection.ontrack = (event) => {
+        if (!remoteStream) {
+            remoteStream = new MediaStream();
+            remoteVideo.srcObject = remoteStream;
+        }
+        remoteStream.addTrack(event.track);
+        console.log('Remote track received (caller)');
+    };
+
+    localPeerConnection.onicecandidate = event => {
+        if (event.candidate) {
+            signalingServer.send(JSON.stringify({
+                type: 'candidate',
+                fromUserId: userId,
+                targetUserId: targetUserId,
+                candidate: event.candidate
+            }));
+        }
+    };
+}
+
+// Setup Receiver Connection
+function setupReceiverConnection() {
+    remotePeerConnection = new RTCPeerConnection();
+
+    localStream.getTracks().forEach(track => remotePeerConnection.addTrack(track, localStream));
+
+    remotePeerConnection.ontrack = (event) => {
+        if (!remoteStream) {
+            remoteStream = new MediaStream();
+            remoteVideo.srcObject = remoteStream;
+        }
+        remoteStream.addTrack(event.track);
+        statusMessage.innerHTML = 'Call connected';
+        console.log('Remote track received (receiver)');
+    };
+
+    remotePeerConnection.onicecandidate = event => {
+        if (event.candidate) {
+            signalingServer.send(JSON.stringify({
+                type: 'candidate',
+                fromUserId: userId,
+                targetUserId: targetUserId,
+                candidate: event.candidate
+            }));
+        }
+    };
+}
+
+// Show Call Controls (Mute, End Call)
+function showCallControls() {
+    muteButton.classList.remove('hidden');
+    endCallButton.classList.remove('hidden');
+}
+
+// Clean up and reset UI after the call ends
+function cleanupCall() {
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    if (remoteStream) {
+        remoteStream.getTracks().forEach(track => track.stop());
+        remoteVideo.srcObject = null;
+    }
+    localPeerConnection?.close();
+    remotePeerConnection?.close();
+    resetUI();
+}
+
+// Reset UI after the call ends or is rejected
+function resetUI() {
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+    acceptCallButton.classList.add('hidden');
+    rejectCallButton.classList.add('hidden');
+    muteButton.classList.add('hidden');
+    endCallButton.classList.add('hidden');
+    statusMessage.innerHTML = '';
+}
