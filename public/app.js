@@ -8,7 +8,7 @@ const endCallButton = document.getElementById('endCallButton');
 const statusMessage = document.getElementById('statusMessage');
 
 const signalingServer = new WebSocket(
-    "wss://webrtc-zgkp.onrender.com"
+    "wss://webrtc-dqxz.onrender.com"
 );
 
 let localPeerConnection;
