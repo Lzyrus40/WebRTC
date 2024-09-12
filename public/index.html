@@ -5,74 +5,333 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebRTC Video Call</title>
+
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+        }
+
         body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background: #000;
             color: #fff;
-            background-color: black;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #fff;
+        }
+
+        .card {
+            background: #0d0d0d;
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 22px;
+            margin-bottom: 22px;
+            box-shadow: 0 10px 25px rgba(255, 255, 255, 0.03);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #ddd;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: .3s;
+            margin-bottom: 15px;
+        }
+
+        input::placeholder {
+            color: #777;
+        }
+
+        input:focus {
+            border-color: #777;
+            box-shadow: 0 0 12px rgba(255, 255, 255, .08);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .25s;
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: scale(.98);
+        }
+
+        /* Individual Buttons */
+
+        #registerButton,
+        #callButton {
+            background: #242424;
+        }
+
+        #registerButton:hover,
+        #callButton:hover {
+            background: #333;
+        }
+
+        #acceptCall {
+            background: #15803d;
+        }
+
+        #acceptCall:hover {
+            background: #166534;
+        }
+
+        #rejectCall,
+        #endCallButton {
+            background: #b91c1c;
+        }
+
+        #rejectCall:hover,
+        #endCallButton:hover {
+            background: #991b1b;
+        }
+
+        #muteButton {
+            background: #d4a017;
+            color: black;
+        }
+
+        #muteButton:hover {
+            background: #b8860b;
+        }
+
+        /* Video Layout */
+
+        #video {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 25px 0;
+        }
+
+        .video-card {
+            background: #0d0d0d;
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: 0 10px 25px rgba(255, 255, 255, .03);
+        }
+
+        .video-card h3 {
+            text-align: center;
+            margin-bottom: 12px;
+            font-weight: 500;
+            color: #ddd;
         }
 
         video {
-            border: 2px solid #cfcece;
-            margin: 10px;
-            width: 600px;
-            height: 400px;
-            background: #fff;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: black;
+            border-radius: 14px;
+            border: 2px solid #333;
+            object-fit: cover;
+            transition: .3s;
         }
 
-        .controls {
+        video:hover {
+            border-color: #666;
+        }
+
+        /* Bottom Controls */
+
+        .call-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
             margin-top: 20px;
+        }
+
+        #statusMessage {
+            margin-top: 25px;
+            text-align: center;
+            color: #45ff8f;
+            font-size: 18px;
+            font-weight: bold;
         }
 
         .hidden {
             display: none;
         }
 
-        #statusMessage {
-            margin-top: 20px;
-            color: green;
-            font-weight: bold;
+        /* Tablet */
+
+        @media (max-width: 900px) {
+
+            #video {
+                grid-template-columns: 1fr;
+            }
+
+            .call-controls {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Mobile */
+
+        @media (max-width: 600px) {
+
+            body {
+                padding: 12px;
+            }
+
+            h1 {
+                font-size: 1.7rem;
+                margin-bottom: 20px;
+            }
+
+            .card,
+            .video-card {
+                padding: 15px;
+                border-radius: 12px;
+            }
+
+            .call-controls {
+                grid-template-columns: 1fr;
+            }
+
+            button {
+                font-size: 16px;
+                padding: 14px;
+            }
+
+            input {
+                font-size: 16px;
+            }
+
+            video {
+                border-radius: 10px;
+            }
+
+            #statusMessage {
+                font-size: 16px;
+            }
         }
     </style>
+
 </head>
 
 <body>
-    <h1>WebRTC Video Call</h1>
 
-    <!-- User Registration -->
-    <div>
-        <label for="userId">Your User ID:</label>
-        <input type="text" id="userId" placeholder="Enter your user ID">
-        <button id="registerButton">Register</button>
+    <div class="container">
+
+        <h1>📹 WebRTC Video Call</h1>
+
+        <!-- Registration -->
+
+        <div class="card">
+
+            <label for="userId">Your User ID</label>
+
+            <input type="text" id="userId" placeholder="Enter your user ID">
+
+            <button id="registerButton">
+                Register
+            </button>
+
+        </div>
+
+        <!-- Call -->
+
+        <div class="card">
+
+            <label for="targetUserId">Call User ID</label>
+
+            <input type="text" id="targetUserId" placeholder="Enter user ID">
+
+            <button id="callButton" class="hidden">
+                📞 Call
+            </button>
+
+        </div>
+
+        <!-- Videos -->
+
+        <div id="video">
+
+            <div class="video-card">
+                <h3>Local Video</h3>
+                <video id="localVideo" autoplay playsinline muted>
+                </video>
+            </div>
+
+            <div class="video-card">
+                <h3>Remote Video</h3>
+                <video id="remoteVideo" autoplay playsinline>
+                </video>
+            </div>
+
+        </div>
+
+        <!-- Controls -->
+
+        <div class="call-controls">
+
+            <button id="acceptCall" class="hidden">
+                ✅ Accept
+            </button>
+
+            <button id="rejectCall" class="hidden">
+                ❌ Reject
+            </button>
+
+            <button id="muteButton" class="hidden">
+                🔇 Mute
+            </button>
+
+            <button id="endCallButton" class="hidden">
+                📴 End Call
+            </button>
+
+        </div>
+
+        <div id="statusMessage"></div>
+
     </div>
-
-    <!-- Call Initiation -->
-    <div class="controls">
-        <label for="targetUserId">Call User ID:</label>
-        <input type="text" id="targetUserId" placeholder="Enter target user ID">
-        <button id="callButton" class="hidden">Call</button>
-    </div>
-
-    <!-- Video Elements -->
-    <div id="video">
-        <video id="localVideo" autoplay playsinline muted></video>
-        <video id="remoteVideo" autoplay playsinline></video>
-    </div>
-
-    <!-- Call Controls -->
-    <div class="controls">
-        <button id="acceptCall" class="hidden">Accept Call</button>
-        <button id="rejectCall" class="hidden">Reject Call</button>
-        <button id="muteButton" class="hidden">Mute</button>
-        <button id="endCallButton" class="hidden">End Call</button>
-    </div>
-
-    <!-- Status Message -->
-    <div id="statusMessage"></div>
 
     <script src="app.js"></script>
+
 </body>
 
 </html>
