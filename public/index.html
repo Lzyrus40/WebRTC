@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Video Call</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #fff;
+            background-color: black;
+        }
+
+        video {
+            border: 2px solid #cfcece;
+            margin: 10px;
+            width: 600px;
+            height: 400px;
+            background: #fff;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #statusMessage {
+            margin-top: 20px;
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>WebRTC Video Call</h1>
+
+    <!-- User Registration -->
+    <div>
+        <label for="userId">Your User ID:</label>
+        <input type="text" id="userId" placeholder="Enter your user ID">
+        <button id="registerButton">Register</button>
+    </div>
+
+    <!-- Call Initiation -->
+    <div class="controls">
+        <label for="targetUserId">Call User ID:</label>
+        <input type="text" id="targetUserId" placeholder="Enter target user ID">
+        <button id="callButton" class="hidden">Call</button>
+    </div>
+
+    <!-- Video Elements -->
+    <div id="video">
+        <video id="localVideo" autoplay playsinline muted></video>
+        <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+
+    <!-- Call Controls -->
+    <div class="controls">
+        <button id="acceptCall" class="hidden">Accept Call</button>
+        <button id="rejectCall" class="hidden">Reject Call</button>
+        <button id="muteButton" class="hidden">Mute</button>
+        <button id="endCallButton" class="hidden">End Call</button>
+    </div>
+
+    <!-- Status Message -->
+    <div id="statusMessage"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
